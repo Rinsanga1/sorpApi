@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <title>Sorp Predict</title>
+        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap"
+            rel="stylesheet">
+        <style>
+        body {
+            font-family: 'Roboto', 'sans-serif';
+        }
+        </style>
+    </head>
+
+    <body class="flex flex-col items-center h-[100vh] bg-black text-white justify-center gap-4 text-2xl">
+
+        <h1>Solid or Pattern</h1>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+
+            <div>
+                <label
+                    class="w-64 flex flex-col items-center px-4 py-6 bg-white text-black rounded-lg shadow-lg tracking-wide uppercase cursor-pointer hover:bg-indigo-950 hover:text-white ease-in duration-150">
+                    <svg class="w-8 h-8" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path
+                            d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4-4-4 4h3v3h2v-3z" />
+                    </svg>
+                    <span class="mt-2  leading-normal">Select a file</span>
+                    <input class="hidden" type="file" name="image" id="imageInput">
+                </label>
+                <span class="text-red-500 text-sm hidden" id="errorMsg">Invalid file type</span>
+            </div>
+
+            <input
+                class="mt-3 py-2 px-6 rounded-[45px] bg-white text-black inline-block cursor-pointer align-text-middle border border-black hover:bg-pink-400 hover:border-0 ease-in duration-150"
+                type="button" value="JSON" onclick="predictJSON()">
+
+            <input
+                class="mt-3 py-2 px-6 rounded-[45px] bg-white text-black inline-block cursor-pointer align-text-middle border border-black hover:bg-pink-400 hover:border-0 ease-in duration-150"
+                type="button" value="Form" onclick="predictForm()">
+
+        </form>
+
+        <div id="result">
+            <h2>Results —</h2>
+            <div>
+                <span class="text-gray-500">Predicted Class: </span>
+                <p class="inline-block" id="predictedClass">Null</p>
+            </div>
+            <div>
+                <span class="text-gray-500">Probability: </span>
+                <p class="inline-block" id="probability">0</p>%
+            </div>
+        </div>
+    </body>
+
+    <script>
+    const imageInput = document.getElementById('imageInput');
+    const errorMsg = document.getElementById('errorMsg');
+
+    const API_KEY = 'unicorn';
+
+    const getExtension = (filename) => {
+        var parts = filename.split('.');
+        return parts[parts.length - 1];
+    }
+
+    const isImage = (filename) => {
+        var ext = getExtension(filename);
+        switch (ext.toLowerCase()) {
+            case 'jpg':
+            case 'jpeg':
+            case 'gif':
+            case 'bmp':
+            case 'png':
+            case 'webp':
+                return true;
+        }
+        return false;
+    }
+
+    function predictJSON() {
+        errorMsg.classList.add('hidden');
+        const file = imageInput.files[0];
+
+        if (!isImage(file.name)) {
+            errorMsg.classList.remove('hidden');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = function () {
+            const base64 = reader.result.split(',')[1];
+
+            axios.post('http://127.0.0.1:5000/predict/json', {
+                b64: base64
+            }, {
+                headers: {
+                    'x-api-key': API_KEY
+                }
+            })
+                .then(function (response) {
+                    displayResult(response.data);
+                })
+                .catch(function (error) {
+                    console.error(error);
+                });
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function predictForm() {
+        errorMsg.classList.add('hidden');
+        const file = imageInput.files[0];
+
+        if (!isImage(file.name)) {
+            errorMsg.classList.remove('hidden');
+            return;
+        }
+
+        if (file) {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            axios.post('http://127.0.0.1:5000/predict/formData', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'x-api-key': API_KEY
+                }
+            })
+                .then(response => {
+                    displayResult(response.data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        } else {
+            alert('Please select a file to upload.');
+        }
+    }
+
+    function displayResult(data) {
+        const predictedClass = document.getElementById('predictedClass');
+        const probability = document.getElementById('probability');
+        const resultDiv = document.getElementById('result');
+
+        predictedClass.textContent = data.predicted_class;
+        probability.textContent = (Math.round(data.probability * 100) / 100).toFixed(2);
+    }
+
+</script>
+
+
+</html>
