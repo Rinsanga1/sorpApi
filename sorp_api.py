@@ -9,6 +9,7 @@ import base64
 import io
 from PIL import Image
 from datetime import datetime
+from sqlalchemy import func
 
 from models import db, APIRequest, APIKey
 from predictfn import predictit, init_model
@@ -27,26 +28,16 @@ model = init_model()
 with app.app_context():
     db.create_all()
 
-def require_api_key(f):
-    def decorated_function(*args, **kwargs):
-        api_key = request.headers.get('x-api-key', '')
-        if api_key is None:
-            log_request(None, False)
-            abort(401, 'Unauthorized Access: No API Key provided')
-
-        valid_api_key = check_api_key(api_key)
-        if not valid_api_key:
-            log_request(api_key, False)
-            abort(401, 'Unauthorized Access: Invalid API Key')
-
-        log_request(api_key, True)
-        return f(*args, **kwargs)
-    return decorated_function
-
 
 def check_api_key(api_key):
     api_key_record = APIKey.query.filter_by(api_key=api_key).first()
-    return api_key_record is not None
+    if api_key_record is not None:
+        log_request(api_key_record.id, True)
+        return True
+    else:
+        log_request('Invalid', False)
+        return False
+
 
 
 def log_request(api_key, is_valid):
@@ -54,6 +45,7 @@ def log_request(api_key, is_valid):
                            is_valid=is_valid, timestamp=datetime.now())
     db.session.add(log_entry)
     db.session.commit()
+    db.session.close()
 
 
 image_parser = reqparse.RequestParser()
@@ -73,9 +65,14 @@ uni_parser.add_argument('x-api-key',
 @api.expect(json_parser, validate=True)
 class Predict(Resource):
     @api.expect(uni_parser, json_parser, validate=True)
-    @require_api_key
     @api.doc(description="predict using base64")
     def post(self):
+        api_key = uni_parser.parse_args().get("x-api-key")
+        if not check_api_key(api_key):
+            log_request(api_key, False)
+            abort(401, 'Unauthorized Access: Invalid API Key')
+
+        log_request(api_key, True)
         args = json_parser.parse_args()
         b64_code = args['b64']
 
@@ -108,13 +105,17 @@ class Predict(Resource):
 @api.expect(image_parser, validate=True)
 class PredictFormFile(Resource):
     @api.expect(uni_parser, image_parser, validate=True)
-    @require_api_key
     @api.doc(description="Takes a form file as input and returns predictions")
     def post(self):
+        api_key = uni_parser.parse_args().get("x-api-key")
+        if not check_api_key(api_key):
+            abort(401, 'Unauthorized Access: Invalid API Key')
+
         img_file = image_parser.parse_args().get("image")
+        # TODO : fix null file error
 
         if not img_file.content_type.startswith('image/'):
-            raise BadRequest('File is not an image')
+            abort(400, "File is not an image")
 
         try:
             image_bytes = img_file.read()
@@ -133,6 +134,32 @@ class PredictFormFile(Resource):
 
         except (IOError, SyntaxError) as e:
             raise BadRequest('Error processing the image file')
+
+
+@api.route('/getStats')
+class GetStats(Resource):
+    def get(self):
+        total_requests = db.session.query(func.count(APIRequest.id)).scalar()
+        valid_requests = db.session.query(func.count(APIRequest.id)).filter_by(is_valid=True).scalar()
+        invalid_requests = db.session.query(func.count(APIRequest.id)).filter_by(is_valid=False).scalar()
+
+        all_requests = db.session.query(APIRequest).all()
+
+        response = {
+            'total_requests': total_requests,
+            'valid_requests': valid_requests,
+            'invalid_requests': invalid_requests,
+            'all_requests': [
+                {
+                    'id': request.id,
+                    'api_key': request.api_key,
+                    'is_valid': request.is_valid,
+                    'timestamp': request.timestamp.isoformat()
+                } for request in all_requests
+            ]
+        }
+
+        return response
 
 
 if __name__ == '__main__':

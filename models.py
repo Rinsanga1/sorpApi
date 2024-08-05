@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 
-db = SQLAlchemy()
+db = SQLAlchemy(session_options={"autoflush": True})
 
 
 class APIRequest(db.Model):
