@@ -1,1 +1,1 @@
-FLASK_APP=sorp_api
+export FLASK_APP=sorp_api
