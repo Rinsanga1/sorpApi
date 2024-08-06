@@ -9,3 +9,5 @@ class Config:
 
     SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(sorp_db_path, "db.sqlite3")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    JWT_SECRET_KEY = "ismykey"
