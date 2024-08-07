@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_restx import Api
 from flask_jwt_extended import JWTManager
-from app.utils.models import AdminUsers
+from app.db_model.models import AdminUsers
 
 from config import Config
 

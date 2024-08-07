@@ -10,7 +10,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest
 from PIL import Image
-from app.utils.models import db
+from app.db_model.models import db
 from app.utils.predictfn import predictit, init_model
 from app.utils.logfns import check_api_key, log_request, log_new_api
 from app.utils.logfns import check_admin_login, get_api_request_stats
