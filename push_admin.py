@@ -10,9 +10,11 @@ with app.app_context():
     parser.add_argument("pw", help="Password for the admin user")
 
     args = parser.parse_args()
+    if len(args.pw) < 9:
+        print("password needs to be at least 8 characters long")
 
-    log_entry = AdminUsers(username=args.user, email=args.pw)
-    db.session.add(log_entry)
-    db.session.commit()
-
-    print({"new user added": args.user})
+    else:
+        log_entry = AdminUsers(username=args.user, email=args.pw)
+        db.session.add(log_entry)
+        db.session.commit()
+        print({"new user added": args.user})

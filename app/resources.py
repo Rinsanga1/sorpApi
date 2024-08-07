@@ -1,16 +1,19 @@
 import io
 import base64
+from flask import abort
 from flask_cors import CORS
 from flask_restx import Resource
 from flask_restx import reqparse
 from flask_jwt_extended import jwt_required, create_access_token
+from flask_jwt_extended import current_user
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest
 from PIL import Image
+from app.utils.models import db
+from app.utils.predictfn import predictit, init_model
 from app.utils.logfns import check_api_key, log_request, log_new_api
 from app.utils.logfns import check_admin_login, get_api_request_stats
-from app.utils.predictfn import predictit, init_model
-from app.utils.models import db
 from app import api
 from app import app
 
@@ -27,19 +30,10 @@ with app.app_context():
     db.create_all()
 
 
-@app.before_request
-def before_request():
-    db.session.remove()
-
-
-@app.teardown_request
-def teardown_request(exception):
-    db.session.remove()
-
-
 authorizations = {
     "adminJWT": {"type": "apiKey", "in": "header", "name": "Authorization"}
 }
+
 
 image_parser = reqparse.RequestParser()
 image_parser.add_argument("image", type=FileStorage, location="files", required=True)
@@ -57,7 +51,7 @@ admin_parser.add_argument("pw", type=str, location="json", required=True)
 addApi_parser = reqparse.RequestParser()
 addApi_parser.add_argument("new_api_key", type=str, required=True)
 
-ns = api.namespace("admin", authorizations=authorizations, description="for admins")
+admin = api.namespace("admin", authorizations=authorizations, description="for admins")
 
 
 @api.route("/predict/json")
@@ -90,7 +84,7 @@ class Predict(Resource):
             ):
                 image = image.convert("RGB")
         except (IOError, SyntaxError) as e:
-            raise BadRequest("Decoded data is not a valid image", e)
+            raise BadRequest("Decoded data is not a valid image")
 
         probability, predicted_class = predictit(image, model)
         probability = str(float(probability) * 100)
@@ -125,38 +119,58 @@ class PredictFormFile(Resource):
             return {"probability": probability, "predicted_class": predicted_class}, 200
 
         except (IOError, SyntaxError) as e:
-            raise BadRequest("Error processing the image file", e)
+            raise BadRequest("Error processing the image file")
 
 
-@ns.route("/Login")
+@api.route("/getstats")
+class GetStat(Resource):
+    @api.expect(uni_parser)
+    def get(self):
+        apiargs = uni_parser.parse_args().get('x-api-key')
+        total, valid, invalid = get_api_request_stats(apiargs)
+
+        response = {
+            "total_requests": total,
+            "valid_requests": valid,
+            "invalid_requests": invalid,
+        }
+
+        return response
+
+
+@admin.route("/login")
 class admin_login(Resource):
-    @ns.expect(admin_parser)
+    @admin.expect(admin_parser)
     def post(self):
         admin_user_args = admin_parser.parse_args().get("user")
         admin_pw_args = admin_parser.parse_args().get("pw")
-        result = check_admin_login(admin_user_args, admin_pw_args)
-        if not result:
+
+        user_obj = check_admin_login(admin_user_args, admin_pw_args)
+        if not user_obj:
             abort(400, "invalid username or email")
-        return {"access token": create_access_token(admin_user_args)}
+
+        return {"access token": create_access_token(user_obj)}
 
 
-@ns.route("/ApiKey")
+@admin.route("/apikey")
 class add_apikey_admin(Resource):
     method_decorators = [jwt_required()]
 
-    @ns.doc(security="adminJWT")
-    @ns.expect(addApi_parser)
+    @admin.doc(security="adminJWT")
+    @admin.expect(addApi_parser)
     def post(self):
         apiadd_args = addApi_parser.parse_args().get("new_api_key")
-        log_new_api(apiadd_args)
-        return {"new api key": apiadd_args}
+        key_maker = current_user.username
+
+        log_new_api(apiadd_args, key_maker)
+        return {"new api key added": apiadd_args, "by user": key_maker}
 
 
-@ns.route("/GetStats/<string:x_api_key>")
+@admin.route("/getstats/<string:x_api_key>")
 class GetStatAdmin(Resource):
     method_decorators = [jwt_required()]
 
-    @ns.doc(security="adminJWT")
+    @admin.doc(security="adminJWT")
     def get(self, x_api_key):
         total, valid, invalid = get_api_request_stats(x_api_key)
 
