@@ -32,20 +32,20 @@ function enterKey() {
 
 function DisplayCurrentUser() {
     const user_display = document.getElementById('currentUser');
-    const username = document.getElementById('username').value;
 
     if (!localStorage.getItem('jwt')) {
         user_display.textContent = 'Logged Out';
     } else {
+        const username = document.getElementById('username').value;
         user_display.textContent = username;
     }
 }
 
-setInterval(DisplayCurrentUser, 1000);
-
-DisplayCurrentUser();
 
 function LoadPageKeyList() {
+    closeModal();
+    showKeyList();
+    DisplayCurrentUser();
     const keylistElement = document.getElementById('keylist');
     keylistElement.innerHTML = '';
 
@@ -60,6 +60,8 @@ function LoadPageKeyList() {
 }
 
 function LoadPageCreateKey() {
+    closeModal()
+    DisplayCurrentUser();
     const pageLogin = document.getElementById('pageLogin');
     const pageList = document.getElementById('pageKeyList');
     pageLogin.classList.add('hidden');
@@ -91,7 +93,11 @@ function Logout() {
 }
 
 function login() {
+    const user_display = document.getElementById('currentUser');
+    closeModal();
+    user_display.classList.add('hidden')
     const isLoggedInText = document.getElementById('isLoggedInText');
+    isLoggedInText.classList.add('hidden')
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
 
@@ -118,26 +124,6 @@ function login() {
         });
 }
 
-function showKeyList() {
-    if (isTokenExpired()) {
-        Logout();
-        return;
-    }
-
-    const storedToken = localStorage.getItem('jwt');
-
-    axios.get('http://127.0.0.1:5000/admin/keylist', {
-        headers: {
-            'Authorization': `Bearer ${storedToken}`
-        }
-    })
-        .then(function(response) {
-            DisplayKeyList(response.data.api_keys);
-        })
-        .catch(function(error) {
-            console.log(error);
-        });
-}
 
 function CreateKey() {
     if (isTokenExpired()) {
@@ -150,7 +136,7 @@ function CreateKey() {
     const newKey = document.getElementById('newKey').value;
     const storedToken = localStorage.getItem('jwt');
 
-    axios.post('http://127.0.0.1:5000/admin/apikey', {
+    axios.post('http://127.0.0.1:5000/admin/apikeys', {
         new_api_key: newKey
     }, {
         headers: {
@@ -171,12 +157,34 @@ function CreateKey() {
         });
 }
 
-function DisplayKeyList(apiKeys) {
+function showKeyList() {
+    if (isTokenExpired()) {
+        Logout();
+        return;
+    }
+
+    const storedToken = localStorage.getItem('jwt');
+
+    axios.get('http://127.0.0.1:5000/admin/apikeys', {
+        headers: {
+            'Authorization': `Bearer ${storedToken}`
+        }
+    })
+        .then(function(response) {
+            DisplayKeyList(response.data);
+        })
+        .catch(function(error) {
+            console.log(error);
+        });
+}
+
+
+function DisplayKeyList(apiKeys, tableId) {
     const keylistElement = document.getElementById('keylist');
     keylistElement.innerHTML = '';
 
     const table = document.createElement('table');
-    table.id = 'table';
+    table.id = tableId;
 
     if (apiKeys.length === 0) {
         keylistElement.innerHTML = '<p>No API keys found.</p>';
@@ -199,8 +207,7 @@ function DisplayKeyList(apiKeys) {
     headerRow.appendChild(headerCell3);
     table.appendChild(headerRow);
 
-    const username = document.getElementById('username').value
-
+    const username = document.getElementById('username').value;
 
     apiKeys.forEach(api => {
         const row = document.createElement('tr');
@@ -217,7 +224,7 @@ function DisplayKeyList(apiKeys) {
             const updateIcon = document.createElement('i');
             updateIcon.className = 'fas fa-edit';
             updateIcon.onclick = function() {
-                update_key(api.api_key);
+                update_key(api.id);
             };
             updateIcon.style.cursor = 'pointer';
             updateIcon.title = 'Update';
@@ -225,7 +232,7 @@ function DisplayKeyList(apiKeys) {
             const deleteIcon = document.createElement('i');
             deleteIcon.className = 'fas fa-trash';
             deleteIcon.onclick = function() {
-                delete_key(api.api_key);
+                delete_key(api.id);
             };
             deleteIcon.style.cursor = 'pointer';
             deleteIcon.title = 'Delete';
@@ -244,12 +251,60 @@ function DisplayKeyList(apiKeys) {
     keylistElement.appendChild(table);
 }
 
-function update_key(api_key) {
-    console.log(api_key);
+
+function delete_key(idhere) {
+    const storedToken = localStorage.getItem('jwt');
+
+    axios.delete('http://127.0.0.1:5000/admin/apikeys', {
+        headers: {
+            'Authorization': `Bearer ${storedToken}`
+        },
+        data: {
+            delete: idhere
+        }
+    })
+        .then(function(response) {
+            showKeyList()
+        })
+        .catch(function(error) { console.error("Error deleting the key:");
+        });
 }
 
-function delete_key(api_key) {
-    console.log(api_key);
+let apiKeyToUpdate;
+
+function update_key(api_key) {
+    apiKeyToUpdate = api_key;
+
+    modal = document.getElementById('updateModal')
+    modal.classList.remove('hidden')
+}
+
+function closeModal() {
+    modal = document.getElementById('updateModal')
+    modal.classList.add('hidden')
+
+    const newApiKeyValue = document.getElementById('newApiKey').value = '';
+}
+
+function submitUpdate() {
+    const newApiKeyValue = document.getElementById('newApiKey').value;
+    const storedToken = localStorage.getItem('jwt');
+
+    axios.put('http://127.0.0.1:5000/admin/apikeys', {
+        update: apiKeyToUpdate,
+        update_valoo: newApiKeyValue
+    }, {
+        headers: {
+            'Authorization': `Bearer ${storedToken}`
+        }
+    })
+    .then(function(response) {
+        closeModal();
+        showKeyList();
+    })
+    .catch(function(error) {
+        console.error("Error updating the key:", error);
+    });
 }
 
 function isTokenExpired() {

@@ -5,10 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
+
     <script src="admin.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -37,7 +39,7 @@
 
             <p id="isLoggedInText" class="text-red-500 hidden">Not Logged in</p>
 
-            <button class="rounded p-1  bg-pink-400" onclick="login()">Login</button>
+            <button onclick="login()">Login</button>
         </div>
 
 
@@ -49,7 +51,6 @@
             </span>
 
             <h2>List of Current APIs</h2>
-            <button class="rounded p-1  bg-pink-800" onclick="showKeyList()">ShowApi</button>
             <table id="table"></table>
 
             <p id="keylist"></p>
@@ -59,8 +60,11 @@
 
         <div id='pageCreate' class="flex flex-col gap-4 items-center hidden">
             <h2>Create a New API Key</h2>
-            <input class="rounded-sm bg-gray-700" type="text" id="newKey" placeholder="Enter new API key" />
-            <button class="rounded p-1  bg-pink-800" onclick="CreateKey()">Create Key</button>
+            <div class="">
+                <input class="rounded-sm bg-gray-700" type="text" id="newKey" placeholder="Enter new API key" />
+                <button class="rounded p-1  bg-pink-800" onclick="CreateKey()">Add Key</button>
+            </div>
+
             <div class="text-red-500 hidden" id="showKey"></div>
 
             <span class="flex items-center gap-4">
@@ -68,6 +72,16 @@
                 <button class="rounded p-1  bg-pink-400" onclick="LoadPageKeyList()">Api List</button>
                 <button class="rounded p-1  bg-pink-400" onclick="Logout()">Logout</button>
             </span>
+        </div>
+
+
+        <div id="updateModal" class="flex flex-col gap-4 items-center hidden">
+            <div class="modal-content">
+                <span onclick="closeModal()">&times;</span>
+                <h2>Update API Key</h2>
+                <input class=" border-rose-300 rounded-sm bg-gray-700" type="text" id="newApiKey" required>
+                <button class="rounded p-1 bg-pink-400" id="submitUpdate" onclick="submitUpdate()">Update</button>
+            </div>
         </div>
     </div>
 

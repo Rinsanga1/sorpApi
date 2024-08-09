@@ -43,13 +43,15 @@ authorizations = {
 
 
 image_parser = reqparse.RequestParser()
-image_parser.add_argument("image", type=FileStorage, location="files", required=True)
+image_parser.add_argument("image", type=FileStorage,
+                          location="files", required=True)
 
 json_parser = reqparse.RequestParser()
 json_parser.add_argument("b64", type=str, location="json", required=True)
 
 uni_parser = reqparse.RequestParser()
-uni_parser.add_argument("x-api-key", type=str, location="headers", required=True)
+uni_parser.add_argument("x-api-key", type=str,
+                        location="headers", required=True)
 
 admin_parser = reqparse.RequestParser()
 admin_parser.add_argument("user", type=str, location="json", required=True)
@@ -59,13 +61,14 @@ addApi_parser = reqparse.RequestParser()
 addApi_parser.add_argument("new_api_key", type=str, required=True)
 
 delete_parser = reqparse.RequestParser()
-delete_parser.add_argument("delete", type=int, required=True)
+delete_parser.add_argument("delete", type=str, required=True)
 
 update_parser = reqparse.RequestParser()
-update_parser.add_argument("update", type=int, required=True)
+update_parser.add_argument("update", type=str, required=True)
 update_parser.add_argument("update_valoo", type=str, required=True)
 
-admin = api.namespace("admin", authorizations=authorizations, description="for admins")
+admin = api.namespace(
+    "admin", authorizations=authorizations, description="for admins")
 
 
 @api.route("/predict/json")
@@ -207,7 +210,7 @@ class DeleteKey(Resource):
         key_maker = current_user.username
         duplicate_check = check_api_dupe(apiadd_args)
         if duplicate_check is not None:
-            abort(400, "API key already exists")
+            abort(409, "API key already exists")
         log_new_api(apiadd_args, key_maker)
         return {"new api key added": apiadd_args}
 
@@ -215,17 +218,6 @@ class DeleteKey(Resource):
     def get(self):
         api_key_list = get_api_key_list()
         return api_key_list, 200
-
-    @admin.doc(security="adminJWT")
-    @api.expect(delete_parser)
-    def delete(self):  # Delete Existing Key
-        api_args = delete_parser.parse_args().get("delete")
-        api_exist_check = check_id_exist(api_args)
-
-        if api_exist_check is not None:
-            delete_api_key(api_args)
-            return {"deleted": api_args}
-        return {"deleted": "no such api key existed"}
 
     @admin.doc(security="adminJWT")
     @api.expect(update_parser)
@@ -238,6 +230,16 @@ class DeleteKey(Resource):
             update_api_key(api_args, update_args)
             return {"updated": api_args}
         return {"updated": "no such api key existed"}
+
+    @admin.doc(security="adminJWT")
+    @api.expect(delete_parser)
+    def delete(self):  # Delete Existing Key
+        api_args = delete_parser.parse_args().get("delete")
+
+        if check_id_exist(api_args) is not None:
+            delete_api_key(api_args)
+            return {"deleted": "delete succes"}
+        return {"deleted": "no such api key existed"}
 
 
 if __name__ == "__main__":
