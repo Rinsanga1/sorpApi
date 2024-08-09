@@ -10,6 +10,10 @@ with app.app_context():
     parser.add_argument("pw", help="Password for the admin user")
 
     args = parser.parse_args()
+
+    def check_if_user_exit():
+        return None
+
     if len(args.pw) < 8:
         print("password needs to be at least 8 characters long")
 
