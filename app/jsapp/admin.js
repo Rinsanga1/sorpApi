@@ -72,6 +72,9 @@ function LoadPageCreateKey() {
 }
 
 function Logout() {
+    const user_display = document.getElementById('currentUser');
+    user_display.classList.add('hidden')
+
     localStorage.removeItem('jwt');
     localStorage.removeItem('jwt_exp');
 
@@ -93,8 +96,8 @@ function Logout() {
 }
 
 function login() {
-    const user_display = document.getElementById('currentUser');
     closeModal();
+    const user_display = document.getElementById('currentUser');
     user_display.classList.add('hidden')
     const isLoggedInText = document.getElementById('isLoggedInText');
     isLoggedInText.classList.add('hidden')
